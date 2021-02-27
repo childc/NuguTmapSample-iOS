@@ -20,8 +20,12 @@
 
 import UIKit
 import MediaPlayer
+import Contacts
+import MessageUI
 
+import NuguCore
 import NuguAgents
+import NuguUtils
 import NuguClientKit
 import NuguUIKit
 
@@ -52,6 +56,9 @@ final class MainViewController: UIViewController {
     private var becomeActiveObserver: Any?
     private var asrResultObserver: Any?
     private var dialogStateObserver: Any?
+    
+    // Dummy
+    private let tmap = NuguTmapDummy(contextManager: NuguCentralManager.shared.client.contextManager)
     
     // MARK: Override
     
@@ -178,17 +185,22 @@ private extension MainViewController {
     /// AudioSession is required for using Nugu
     /// Add delegates for all the components that provided by default client or custom provided ones
     func initializeNugu() {
-        // keyword detector delegate
-        NuguCentralManager.shared.client.keywordDetector.delegate = self
-        
-        // Observers
-        addAsrAgentObserver(NuguCentralManager.shared.client.asrAgent)
-        addDialogStateObserver(NuguCentralManager.shared.client.dialogStateAggregator)
-        
         // UI
         voiceChromePresenter.delegate = self
         displayWebViewPresenter.delegate = self
         audioDisplayViewPresenter.delegate = self
+        
+        // keyword detector delegate
+        NuguCentralManager.shared.client.keywordDetector.delegate = self
+        
+        // Phone Call & Message
+        NuguCentralManager.shared.client.phoneCallAgent.delegate = self
+        NuguCentralManager.shared.client.messageAgent.delegate = self
+        NuguCentralManager.shared.client.locationAgent.delegate = self
+        
+        // Observers
+        addAsrAgentObserver(NuguCentralManager.shared.client.asrAgent)
+        addDialogStateObserver(NuguCentralManager.shared.client.dialogStateAggregator)
     }
     
     /// Show nugu usage guide webpage after successful login process
@@ -402,5 +414,206 @@ private extension MainViewController {
                 break
             }
         }
+    }
+}
+
+// MARK: - Phone Call
+
+extension MainViewController: PhoneCallAgentDelegate {
+    private class PhoneCallManager {
+        static let shared = PhoneCallManager()
+        @Atomic var context = PhoneCallContext(state: .idle, template: nil, recipient: nil)
+        @Atomic var currentContacts = [String: String]()
+        @Atomic var templatId = ""
+    }
+    
+    public func phoneCallAgentRequestContext() -> PhoneCallContext {
+        return PhoneCallManager.shared.context
+    }
+    
+    public func phoneCallAgentDidReceiveSendCandidates(item: PhoneCallCandidatesItem, header: Downstream.Header) {
+        log.debug("phoneCallAgentDidReceiveSendCandidates \(item)")
+        guard item.intent == .call else { return }
+        
+        var names = [String]()
+        var searchType: ContactMatchType = .exact
+        if let serverContacts = item.candidates?.filter({ $0.type != .t114 }),
+           0 < serverContacts.count {
+            // search exact match
+            searchType = .exact
+            names.append(contentsOf: serverContacts.map { (person) -> String in
+                return person.name
+            })
+        } else if let intendedName = item.recipientIntended?.name {
+            // search partial match
+            searchType = .partial
+            names.append(intendedName)
+        }
+        
+        ContactsUtil.shared.search(names: names, label: item.recipientIntended?.label, type: searchType) { (type, contactList) in
+            var personList = [PhoneCallPerson]()
+            contactList.forEach { (contact) in
+                contact.phoneNumbers.forEach { (phoneNumber) in
+                    // PhoneNumber를 서버로 전송할 수 없고(개인정보이슈), Person별로 token을 가지고 있으므로 같은 사람의 여러 연락처를 쪼갠다.
+                    let token = contact.makeToken(with: phoneNumber.value)
+                    PhoneCallManager.shared.currentContacts[token] = phoneNumber.value.stringValue.supportedContactString
+                    
+                    let phoneCallPerson = PhoneCallPerson(
+                        name: contact.fullName,
+                        type: .contact,
+                        profileImgUrl: nil,
+                        category: nil,
+                        address: nil,
+                        businessHours: nil,
+                        history: nil,
+                        numInCallHistory: nil,
+                        token: token,
+                        score: nil,
+                        contacts: [
+                            PhoneCallPerson.Contact(
+                                label: item.recipientIntended?.label == nil ? nil :  PhoneCallPerson.Contact.Label(rawValue: item.recipientIntended!.label!),
+                                number: nil
+                            )
+                        ]
+                    )
+                    personList.append(phoneCallPerson)
+                }
+            }
+            
+            if personList.count == 0,
+               let t114List = item.candidates?.filter({ $0.type == .t114 }) {
+                // 로컬 검색 결과가 없으면 T114정보를 보낸다.
+                personList.append(contentsOf: t114List)
+            }
+            
+            let template = PhoneCallContext.Template(intent: item.intent, callType: item.callType, recipientIntended: item.recipientIntended, candidates: personList, searchScene: item.searchScene)
+            let context = PhoneCallContext(state: .idle, template: template, recipient: nil)
+            PhoneCallManager.shared.context = context
+            
+            NuguCentralManager.shared.client.phoneCallAgent.requestSendCandidates(candidatesItem: item, header: header) { (state) in
+                log.debug("requestSendCandidates state: \(state)")
+            }
+        }
+    }
+    
+    public func phoneCallAgentDidReceiveMakeCall(callType: PhoneCallType, recipient: PhoneCallPerson, header: Downstream.Header) -> PhoneCallErrorCode? {
+        guard .callar != callType else { return .callTypeNotSupported }
+        guard let phoneNumber: String = {
+            guard recipient.type != .t114 else {
+                return recipient.contacts?.first?.number
+            }
+            
+            guard let contactHash = recipient.token,
+                  let contactNumber = PhoneCallManager.shared.currentContacts[contactHash] else {
+                return nil
+            }
+
+            return contactNumber
+        }() else {
+            return .none
+        }
+        
+        DispatchQueue.main.async {
+            guard let phoneCallUrl = URL(string: "tel://\(phoneNumber.supportedContactString)"),
+                  UIApplication.shared.canOpenURL(phoneCallUrl) else { return }
+            
+            UIApplication.shared.open(phoneCallUrl, options: [:]) { (success) in
+                log.debug("making phone call \(success)")
+            }
+        }
+        
+        return nil
+    }
+}
+
+// MARK: - Message
+
+extension MainViewController: MessageAgentDelegate, MFMessageComposeViewControllerDelegate {
+    private class MessageManager {
+        static let shared = MessageManager()
+        @Atomic var context: MessageAgentContext?
+        @Atomic var currentContacts = [String: String]()
+    }
+    
+    func messageAgentRequestContext() -> MessageAgentContext? {
+        return MessageManager.shared.context
+    }
+    
+    func messageAgentDidReceiveSendCandidates(item: MessageCandidatesItem, header: Downstream.Header) {
+        guard item.intent == "SEND" else { return }
+        
+        var names = [String]()
+        var searchType: ContactMatchType = .exact
+        if let serverContacts = item.candidates,
+           0 < serverContacts.count {
+            // search exact match
+            searchType = .exact
+            names.append(contentsOf: serverContacts.map { $0.name }.compactMap({ $0 }))
+        } else if let intendedName = item.recipientIntended?.name {
+            // search partial match
+            searchType = .partial
+            names.append(intendedName)
+        }
+        
+        ContactsUtil.shared.search(names: names, label: item.recipientIntended?.label, type: searchType) { (type, contacts) in
+            var contactList  = [MessageAgentContact]()
+            contacts.forEach { (contact) in
+                // PhoneNumber를 서버로 전송할 수 없고(개인정보이슈), Person별로 token을 가지고 있으므로 같은 사람의 여러 연락처를 쪼갠다.
+                contact.phoneNumbers.forEach { (phoneNumber) in
+                    let token = contact.makeToken(with: phoneNumber.value)
+                    MessageManager.shared.currentContacts[token] = phoneNumber.value.stringValue.supportedContactString
+                    
+                    let messageContact = MessageAgentContact(
+                        name: contact.fullName,
+                        type: item.candidates?.first?.type?.rawValue ?? "CONTACT",
+                        number: nil,
+                        label: item.recipientIntended?.label,
+                        profileImgUrl: nil,
+                        message: nil,
+                        time: nil,
+                        numInMessageHistory: nil,
+                        token: token,
+                        score: nil
+                    )
+                    contactList.append(messageContact)
+                }
+            }
+
+            let template = MessageAgentContext.Template(info: nil, recipientIntended: item.recipientIntended, searchScene: item.searchScene, candidates: contactList, messageToSend: nil)
+            MessageManager.shared.context = MessageAgentContext(readActivity: "IDLE", token: nil, template: template)
+
+            NuguCentralManager.shared.client.messageAgent.requestSendCandidates(candidatesItem: item, header: header, completion: nil)
+        }
+    }
+    
+    func messageAgentDidReceiveSendMessage(recipient: MessageAgentContact, header: Downstream.Header) -> String? {
+        guard MFMessageComposeViewController.canSendText() else {
+            return "지금안됨"
+        }
+        
+        DispatchQueue.main.async { [weak self] in
+            let messageViewController = MFMessageComposeViewController()
+            messageViewController.messageComposeDelegate = self
+            
+            if let token = recipient.token,
+               let phoneNumber = MessageManager.shared.currentContacts[token] {
+                messageViewController.recipients = [phoneNumber]
+                messageViewController.body = recipient.message?.text
+                
+                self?.present(messageViewController, animated: true, completion: nil)
+            }
+        }
+        
+        return nil
+    }
+    
+    func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+}
+
+extension MainViewController: LocationAgentDelegate {
+    func locationAgentRequestLocationInfo() -> LocationInfo? {
+        return LocationInfo(latitude: "37.715133.", longitude: "126.734086")
     }
 }

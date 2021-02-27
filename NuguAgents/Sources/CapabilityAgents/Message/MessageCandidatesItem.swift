@@ -33,7 +33,7 @@ public struct MessageCandidatesItem {
     /// The candidate searched for play service.
     ///
     /// If nil, there are no search results.
-    public let candidates: [MessageCandidatesItem]?
+    public let candidates: [Candidate]?
     /// The message to be used for outgoing.
     public let messageToSend: MessageToSendItem?
     /// <#Description#>
@@ -60,8 +60,25 @@ extension MessageCandidatesItem: Codable {
         intent = try? container.decode(String.self, forKey: .intent)
         recipientIntended = try? container.decode(MessageRecipientIntended.self, forKey: .recipientIntended)
         searchScene = try? container.decode(String.self, forKey: .searchScene)
-        candidates = try? container.decode([MessageCandidatesItem].self, forKey: .candidates)
+        candidates = try? container.decode([Candidate].self, forKey: .candidates)
         messageToSend = try? container.decode(MessageToSendItem.self, forKey: .messageToSend)
         interactionControl = try? container.decode(InteractionControl.self, forKey: .interactionControl)
+    }
+}
+
+public extension MessageCandidatesItem {
+    enum CandidateType: String, Codable {
+        case contact = "CONTACT"
+        case exchange = "EXCHANGE"
+        case t114 = "T114"
+        case none = "NONE"
+    }
+    
+    struct Candidate: Codable {
+        public let name: String?
+        public let type: CandidateType?
+        public let number: String?
+        public let label: String?
+        public let profileImgUrl: String?
     }
 }

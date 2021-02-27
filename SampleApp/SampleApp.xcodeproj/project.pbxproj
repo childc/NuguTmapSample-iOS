@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		734808B425E8E212002EB2BA /* ContactsUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734808B325E8E212002EB2BA /* ContactsUtil.swift */; };
+		734808B825E8E285002EB2BA /* StringExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734808B725E8E285002EB2BA /* StringExtension.swift */; };
+		734808C225E8E63A002EB2BA /* NuguTmapDummy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734808C125E8E63A002EB2BA /* NuguTmapDummy.swift */; };
 		73F284DF23815CC9004EBBDF /* SettingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F284A523815CC9004EBBDF /* SettingViewController.swift */; };
 		73F284E023815CC9004EBBDF /* IntroViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F284A623815CC9004EBBDF /* IntroViewController.swift */; };
 		73F284E123815CC9004EBBDF /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F284A723815CC9004EBBDF /* MainViewController.swift */; };
@@ -42,6 +45,9 @@
 /* Begin PBXFileReference section */
 		1E35ABD8543680F9A99E41F6 /* Pods_SampleApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_SampleApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3251FD919C1818DBE8CE0077 /* Pods-SampleApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SampleApp.release.xcconfig"; path = "Target Support Files/Pods-SampleApp/Pods-SampleApp.release.xcconfig"; sourceTree = "<group>"; };
+		734808B325E8E212002EB2BA /* ContactsUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsUtil.swift; sourceTree = "<group>"; };
+		734808B725E8E285002EB2BA /* StringExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringExtension.swift; sourceTree = "<group>"; };
+		734808C125E8E63A002EB2BA /* NuguTmapDummy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NuguTmapDummy.swift; sourceTree = "<group>"; };
 		73F28420238157A7004EBBDF /* SampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73F284A523815CC9004EBBDF /* SettingViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingViewController.swift; sourceTree = "<group>"; };
 		73F284A623815CC9004EBBDF /* IntroViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IntroViewController.swift; sourceTree = "<group>"; };
@@ -106,6 +112,31 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+		734808B225E8E205002EB2BA /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				734808B325E8E212002EB2BA /* ContactsUtil.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		734808B625E8E279002EB2BA /* Extension */ = {
+			isa = PBXGroup;
+			children = (
+				734808B725E8E285002EB2BA /* StringExtension.swift */,
+			);
+			path = Extension;
+			sourceTree = "<group>";
+		};
+		734808C425E8E662002EB2BA /* Comm */ = {
+			isa = PBXGroup;
+			children = (
+				734808B225E8E205002EB2BA /* Utils */,
+				734808B625E8E279002EB2BA /* Extension */,
+			);
+			path = Comm;
+			sourceTree = "<group>";
+		};
 		73F28417238157A7004EBBDF = {
 			isa = PBXGroup;
 			children = (
@@ -129,6 +160,8 @@
 		73F284A323815CC9004EBBDF /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				734808C425E8E662002EB2BA /* Comm */,
+				734808C125E8E63A002EB2BA /* NuguTmapDummy.swift */,
 				7E6A0B062410849C00C7A19E /* MediaPlayer */,
 				7E6A0B092410849C00C7A19E /* PropertyWrappers */,
 				73F284A423815CC9004EBBDF /* UI */,
@@ -389,6 +422,7 @@
 				7E6D1170249C6E1800E3580C /* SettingTableViewCell.swift in Sources */,
 				73F284DF23815CC9004EBBDF /* SettingViewController.swift in Sources */,
 				73F284FE23815CC9004EBBDF /* AppDelegate.swift in Sources */,
+				734808B425E8E212002EB2BA /* ContactsUtil.swift in Sources */,
 				7E6A0B0D2410849C00C7A19E /* UserDefaultsWrapper.swift in Sources */,
 				73F284E023815CC9004EBBDF /* IntroViewController.swift in Sources */,
 				73F284F923815CC9004EBBDF /* SampleAppError.swift in Sources */,
@@ -396,6 +430,8 @@
 				73F284FC23815CC9004EBBDF /* NuguCentralManager.swift in Sources */,
 				73F2850123815CC9004EBBDF /* UserDefaults+Standard.swift in Sources */,
 				73F284E223815CC9004EBBDF /* WebViewController.swift in Sources */,
+				734808C225E8E63A002EB2BA /* NuguTmapDummy.swift in Sources */,
+				734808B825E8E285002EB2BA /* StringExtension.swift in Sources */,
 				73F284FA23815CC9004EBBDF /* SampleApp.swift in Sources */,
 				7E6A0B0C2410849C00C7A19E /* ASRBeepPlayer.swift in Sources */,
 				7E6A0B0B2410849C00C7A19E /* LocalTTSAgent.swift in Sources */,

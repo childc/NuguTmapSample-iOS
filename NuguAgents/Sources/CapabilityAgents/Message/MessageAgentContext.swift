@@ -29,6 +29,12 @@ public struct MessageAgentContext: Codable {
     /// <#Description#>
     public let template: Template?
     
+    public init(readActivity: String, token: String?, template: Template?) {
+        self.readActivity = readActivity
+        self.token = token
+        self.template = template
+    }
+    
     /// <#Description#>
     public struct Template: Codable {
         /// <#Description#>

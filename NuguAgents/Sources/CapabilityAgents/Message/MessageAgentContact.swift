@@ -28,13 +28,13 @@ public struct MessageAgentContact: Codable {
         /// <#Description#>
         public let text: String
         /// <#Description#>
-        public let type: String
+        public var type: String?
         
         /// The initializer for `MessageAgentContact.Message`.
         /// - Parameters:
         ///   - text: <#text description#>
         ///   - type: <#type description#>
-        public init(text: String, type: String) {
+        public init(text: String, type: String?) {
             self.text = text
             self.type = type
         }
